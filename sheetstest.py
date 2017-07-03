@@ -2,8 +2,6 @@ from __future__ import print_function
 import argparse
 import sqlite3
 import time
-
-from apiclient import discovery
 from apiclient.discovery import build
 from httplib2 import Http
 from oauth2client import file, client, tools
