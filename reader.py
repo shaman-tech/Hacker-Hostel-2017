@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np 
 
 def create_sql_command(row_entry):
 	index = ""
@@ -15,11 +16,17 @@ def create_sql_command(row_entry):
 				index = index + ", " + str(column_value)
 	return str(index)
 
+def change_float_int(df_column):
+	for index,value in enumerate(df_column.values):
+		df_column[index] = int(value)
+	return df_column
+
 
 df = pd.read_csv('TGG_Merchandise.csv',skiprows=4)
 df = df.fillna(0)
-scaler = lambda x: round(x,2)
-df['PO #'].apply(scaler)
+df['PO #']= df['PO #'].astype(int)
+# scaler = lambda x: int(x)
+# df['PO #'].apply(scaler)
 column_names = list(df.columns)
 column_values  = df.values
 fields = create_sql_command(column_names)
