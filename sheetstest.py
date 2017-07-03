@@ -8,7 +8,7 @@ from apiclient.discovery import build
 from httplib2 import Http
 from oauth2client import file, client, tools
 
-SCOPES = 'https://spreadsheets.google.com/feeds'#one or more scopes (strings)
+SCOPES = 'https://www.googleapis.com/auth/spreadsheets'#one or more scopes (strings)
 CLIENT_SECRET = 'client_secret.json'
 
 store = file.Storage('storage.json')
@@ -28,13 +28,13 @@ print ('Created "%s"' % res['properties']['title'])
 FIELDS = ('ID','Customer Name','Product Code', 'Units Ordered', 'Unit Price','Status' 'Created at', 'Uploaded at')
 cxn = sqlite3.connect('db.sqlite')
 cur = cxn.cursor()
-rows = cur.execute('SELECT * FROM orders').fetchall()
+rows = cur.execute('SELECT * FROM orders;').fetchall()
 cxn.close()
 rows.insert(0,FIELDS)
-data = {'values': [row[6] for row in rows]}
+data = {'values': [row[:6] for row in rows]}
 
 SHEETS.spreadsheets().values().update(spreadsheetId=SHEET_ID, range='A1', body=data, valueInputOption='RAW').execute()
 print('Wrote data to sheet')
-rows = SHEETS.spreadsheets().values.get(spreadsheetId=SHEET_ID,range= 'Sheet1').execute().get('values',[])
+rows = SHEETS.spreadsheets().values().get(spreadsheetId=SHEET_ID,range= 'Sheet1').execute().get('values',[])
 for row in rows:
-    print (row)
+    print(row)
