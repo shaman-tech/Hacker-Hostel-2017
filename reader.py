@@ -22,21 +22,40 @@ def change_float_int(df_column):
 		df_column[index] = int(value)
 	return df_column
 
-cn = sqlite3.connect('db.sqlite')
-curs = cn.cursor()
-df = pd.read_csv('TGG_Merchandise.csv',skiprows=4)
+def populate_product_num(df):
+	supplier_columns = ['PONUM','PODate','SUPPLIER','ShippingLine','ETAJamaica','ETATGG','AADTGG','DateOffloaded','Dateleft']
+	for index, prod_num in enumerate(df['PONUM']):
+		if prod_num == '?' and df.loc[index,'SUPPLIER'] == "?":
+			for column in supplier_columns:
+				df.loc[index,column] = df.loc[index-1,column]
+		elif df.loc[index,'SUPPLIER'] == "?" and prod_num != "?":
+			for column in supplier_columns[2:]:
+				df.loc[index,column] = df.loc[index-1,column]
+		elif prod_num == "?":
+			for column in supplier_columns:
+				df.loc[index,column] = df.loc[index-1,column]
+
+	return df 
+
+# cn = sqlite3.connect('db.sqlite')
+# curs = cn.cursor()
+fields = "PONUM,PODate,SUPPLIER,ProductDescription,Qty,SizeContainer,ContainerNUM,ShippingLine,ETAJamaica,ETATGG,AADTGG,DateOffloaded,Dateleft"#create_sql_command(column_names)
+df = pd.read_csv('TGG_Merchandise.csv',skiprows=5, names=fields.split(","))
 df = df.fillna(0)
-df['PO #']= df['PO #'].astype(int)
-#changedf['PO #']
-# scaler = lambda x: int(x)
-# df['PO #'].apply(scaler)
+df['PONUM']= df['PONUM'].astype(int)
 column_names = list(df.columns)
 column_values  = df.values
-fields = "PONUM, PODate,SUPPLIER, ProductDescription, Qty, SizeContainer,ContainerNUM, ShippingLine,ETAJamaica,ETATGG,AADTGG,DateOffloaded,Dateleft"#create_sql_command(column_names)
+df = df.replace(0, '?')
+df = df.replace("","?")
 
-for row in column_values:
-	create_table_command = "{} TGG_MERCHANDISE ({}) {} ({})".format('INSERT INTO',fields,'VALUES',create_sql_command(row))
-	curs.execute((create_table_command))
+df = populate_product_num(df)
+df.to_csv('sample.csv')
+
+
+print(df.loc[df['PONUM'] == 23238]) #example of the query 
+# for row in column_values:
+# 	create_table_command = "{} TGG_MERCHANDISE ({}) {} ({})".format('INSERT INTO',fields,'VALUES',create_sql_command(row))
+# 	curs.execute((create_table_command))
 
 
 
