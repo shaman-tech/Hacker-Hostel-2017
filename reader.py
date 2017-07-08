@@ -34,7 +34,6 @@ def populate_product_num(df):
 		elif prod_num == "?":
 			for column in supplier_columns:
 				df.loc[index,column] = df.loc[index-1,column]
-
 	return df 
 
 # cn = sqlite3.connect('db.sqlite')
@@ -47,12 +46,8 @@ column_names = list(df.columns)
 column_values  = df.values
 df = df.replace(0, '?')
 df = df.replace("","?")
-
 df = populate_product_num(df)
 df.to_csv('sample.csv')
-
-
-print(df.loc[df['PONUM'] == 23238]) #example of the query 
 # for row in column_values:
 # 	create_table_command = "{} TGG_MERCHANDISE ({}) {} ({})".format('INSERT INTO',fields,'VALUES',create_sql_command(row))
 # 	curs.execute((create_table_command))
