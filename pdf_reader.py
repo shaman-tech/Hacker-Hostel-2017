@@ -6,7 +6,6 @@ Description:
 	  extract the information needed from each page
 	  to populate a csv file.
 """
-
 from wand.image import Image
 from PIL import Image as PI
 from PIL import ImageEnhance,ImageStat,ImageFilter
@@ -14,9 +13,20 @@ import pyocr
 import pyocr.builders
 import io
 import argparse
+import optparse
 import os
+import time
+from threading import Thread
 
+## Miscellanous Functions
 def vary_img_options(img,option):
+	"""
+	description: Performs digital image processing on the image passed in the
+	arguements with a option that is also passed as a parameter. The acceptable
+	options are color, contrast, bright ( brightness), sharp ( sharpness )
+	parameters: Pillow.Image instance and string
+	returns: Nothing
+	"""
 	if option.lower() == "color":
 		enhancer = ImageEnhance.Color(img)
 	elif option.lower() == "contrast":
@@ -32,41 +42,11 @@ def vary_img_options(img,option):
 		except:
 			break
 
-def apply_filters(img):
-	"""
-	Type of Filters:
-		BLUR
-		CONTOUR
-		DETAIL
-		EDGE_ENHANCE
-		EDGE_ENHANCE_MORE
-		EMBOSS
-		FIND_EDGES
-		SMOOTH
-		SMOOTH_MORE
-		SHARPEN
-	"""
-	img2 = img.filter(ImageFilter.MinFilter(3))
-	img2 = img2.filter(ImageFilter.SHARPEN)
-	return img2
-
-def create_png_files(filename):
-	png_list = []
-	image_pdf = Image(filename="./{}".format(filename), resolution=300)
-	image_png = image_pdf.convert('png')
-	if not os.path.exists('./png_files'):
-		os.system("mkdir ./png_files")
-	for index,img in enumerate(image_png.sequence):
-	    img_page = Image(image=img)
-	    img_page.save(filename="./png_files/image_{}.png".format(index+1))
-	    png_list.append("./png_files/image_{}.png".format(index+1))
-	return png_list
-
 def print_stats(img):
 	"""
-	parameters: PIL.Image.Stat object
+	description:  prints out the statistic of an image
+	parameters:	PIL.Image.Stat object
 	returns: Nothing
-	Description: prints out the statistic of an image
 	"""
 	img_stat = ImageStat.Stat(img)
 	print(img_stat.extrema)#Min/max values for each band in the image.
@@ -80,19 +60,71 @@ def print_stats(img):
 	print(img_stat.var)#Variance for each band in the image.
 	print(img_stat.stddev)#Standard deviation for each band in the image.
 
+def apply_filters(img):
+	"""
+	description: Performs image filtering on specified Image
+	Type of Filters:
+		* BLUR
+		* CONTOUR
+		* DETAIL
+		* EDGE_ENHANCE
+		* EDGE_ENHANCE_MORE
+		* EMBOSS
+		* FIND_EDGES
+		* SMOOTH
+		* SMOOTH_MORE
+		* SHARPEN
+	parameters: Pillow.Image instance
+	returns: Filtered Pillow.Image
+	"""
+	img2 = img.filter(ImageFilter.MinFilter(3))
+	img2 = img2.filter(ImageFilter.SHARPEN)
+	img2 = img2.filter(ImageFilter.DETAIL)
+	return img2
+
 def create_images(png_list):
-	# req_image = []
+	"""
+	description: Given the png_list passed in the parameter this function
+	will apply image filter to improve the pdf page images
+	parameters: a list of png files
+	returns: a list of image blobs
+	"""
 	blob_list = []
 	if not os.path.exists("./update_pngFiles"):
 		os.system("mkdir update_pngFiles")
 	for index,png_file in enumerate(png_list):
 		img = PI.open(png_file)
-		update_img = apply_filters(img)
-		update_img.save("./update_pngFiles/png_file{}.png".format(index))
-		blob_list.append("./update_pngFiles/png_file{}.png".format(index))
+		# update_img = apply_filters(img)
+		img.save("./update_pngFiles/png_file{}.png".format(index+1))
+		blob_list.append("./update_pngFiles/png_file{}.png".format(index+1))
 	return blob_list
 
+#multi-threading
+def create_png_files(filename):
+	"""
+	description: Creates a png_file for each page in the specified pdf file
+	parameters: string
+	returns: list of png files
+	"""
+	png_list = []
+	image_pdf = Image(filename="./{}".format(filename), resolution=300)
+	image_png = image_pdf.convert('png')
+	if not os.path.exists('./png_files'):
+		os.system("mkdir ./png_files")
+	for index,img in enumerate(image_png.sequence):
+	    img_page = Image(image=img)
+	    img_page.save(filename="./png_files/image_{}.png".format(index+1))
+	    png_list.append("./png_files/image_{}.png".format(index+1))
+	return png_list
+
+## multi-threading
 def make_blob(blob_list):
+	"""
+	description: Given the list of png files this function will create image
+	blobs which converts the image into byte string and appends them to a list
+	parameters: a list of png files
+	returns: a list of byte strings
+	"""
 	req_image = []
 	for blob in blob_list:
 		img_page = Image(filename=blob)
@@ -104,12 +136,18 @@ def main():
 	tool = pyocr.get_available_tools()[0]
 	# english is the chosen language
 	lang = tool.get_available_languages()[0]
-	parser = argparse.ArgumentParser(description='Process a pdf file')
-	parser.add_argument('pdf', type=str,
-	                    help='a pdf that contains shipping information')
-	args = parser.parse_args()
-	filename = args.pdf
-	png_list = create_png_files(filename)
+	try:
+		parser = argparse.ArgumentParser(description= 'pdf file used to \
+		populate tgg csv file')
+		parser.add_argument('pdf_file', type=str,
+		                    help='a pdf that contains shipping information')
+
+		command_args = parser.parse_args()
+	except:
+		print("Try this "+ 10*"-" + "> python pdf_reader.py <pdf_file>")
+		return -1
+	pdf_file = command_args.pdf_file
+	png_list = create_png_files(pdf_file)
 	blob_list = create_images(png_list)
 	req_image = make_blob(blob_list)
 	final_text = [ ]
