@@ -19,10 +19,23 @@ import optparse
 import os
 from time import time
 from multiprocessing import Pool , cpu_count
-import random as rand
+import re
+import datetime
+import pytesseract
 
-rand.seed(42)
+resolution = 400
 page_info = "page_info.txt"
+caricom_heading = r'CARICOM[\s+]?\(CARIBBEAN[\s+]?COMMON[\s+]?MARKET\)'
+bill_ladding_heading = r'BILL[\s+]?OF[\s+]?LADING'
+time_date = datetime.datetime.now()
+report_time = "{}/{}/{}".format(time_date.day,time_date.month,time_date.year)
+supplier_regex = r""
+content_regex = r""
+bill_ladding_regex = r'BO[LI]-[0-9]+'
+shipping_line_regex =r'[Cc]arrier[\s+]?[Nn]ame[\s+]?[.]+[\s+]?:[\s+].*[\s+]?[\n+]?Truck[\s+]?No:'
+container_regex = r'[Cc]ontainer number[\s+]?[.]:[\s+]?[A-Z]+[\s+]?[0-9]+-[0-9]'
+product_number_regex = r'P0[\s+]?#[\s+]?[0-9]+'
+invoice_number_regex = r'[0-9]+/[0-9]+/[0-9]+[\s+]?[A-Za-z0-9_]+'
 
 # class Image_Page(SingleImage):
 # 	def __init__(self):
@@ -133,7 +146,7 @@ def create_png_files(filename,pool):
 	"""
 	png_list = []
 	print(5*" " + "Reading PDF file")
-	image_pdf = Image(filename="./{}".format(filename), resolution=300)
+	image_pdf = Image(filename="./{}".format(filename), resolution=resolution)
 	print(5*" " + "Finish Reading PDF file")
 	print(5*" " + "Converting PDF to list of PNG files")
 	image_png = image_pdf.convert('png')
@@ -142,10 +155,10 @@ def create_png_files(filename,pool):
 		os.system("mkdir ./png_folder")
 	start_time = time()
 	for index,img in enumerate(image_png.sequence):
-		img_page = Image(image=img)
+		img_page = Image(image=img,resolution=resolution)
 		img_page.save(filename="./png_folder/png_file{}.png".format(index+1))
 		png_list.append("./png_folder/png_file{}.png".format(index+1))
-	print(5*" " + "Creating png_files took about {} seconds ".format(time()-start_time))
+	# print(5*" " + "Creating png_files took about {} seconds ".format(time()-start_time))
 	return png_list
 
 # def save_image(wand_image):
@@ -162,7 +175,7 @@ def make_imageBlob(png_file):
 	parameters:
 	returns:
 	"""
-	img_page = Image(filename=png_file)
+	img_page = Image(filename=png_file,resolution=resolution)
 	string_text = img_page.make_blob('png')
 	return string_text
 
@@ -171,23 +184,36 @@ def populate_file(req_image):
 	tool = pyocr.get_available_tools()[0]
 	# english is the chosen language
 	lang = tool.get_available_languages()[0]
+	caricom_matches = []
+	ladding_matches = []
 	txt = tool.image_to_string(PI.open(io.BytesIO(req_image)),
 	        lang=lang,
 	        builder=pyocr.builders.TextBuilder())
-	return txt.encode('ascii', 'ignore')
+	caricom_matches = re.findall(caricom_heading,txt)
+	ladding_matches = re.findall(bill_ladding_heading,txt)
+	if len(caricom_matches) > 0:
+		print("This page contains the caricom heading")
+		print("##############################\n\n")
+		# supplier_value =
+		print(txt)
+	elif len(ladding_matches) > 0:
+		print("This page contains the bill ladding heading")
+		print("##############################\n\n")
+		print(txt)
+	else:
+		print("Does not contain the caricom heading or bill ladding heading")
+	return txt.encode('utf8')
 
 def write_content(page_line):
 	with open(page_info,"a") as fout:
-		if page_line != "":
+		if page_line != " ":
 			fout.write("{}\n".format(page_line))
-
 
 def main():
 	total_time = 0
 	#clears page_info.txt
 	with open(page_info,"w") as fout:
 		fout.write("")
-
 	print("Your machine has {} computer processor units (CPU)".format(cpu_count()))
 	pool = Pool(processes = cpu_count())
 	image_textFile = "image_textFile.txt"
@@ -211,7 +237,7 @@ def main():
 	req_image = []
 	print("Making image blobs")
 	start_time = time()
-	req_image = pool.map(make_imageBlob,png_list)
+	req_image = pool.map(make_imageBlob,png_list[:5])
 	print("This make_imageBlob function took about {} seconds ".format(time()-start_time))
 	total_time = total_time + time()-start_time
 	print("Changing the image to text")
@@ -221,9 +247,10 @@ def main():
 	print("This populate_file function took about {} seconds ".format(time()-start_time))
 	total_time = total_time + time()-start_time
 	print("Your program runtime was {} seconds".format(total_time))
-	for page_text in final_text:
-		pool.map(write_content, page_text.split("\n"))
-	print("Finish writing image content to page_info.txt")
+	# for page_text in final_text:
+	# 	pool.map(write_content, page_text.split("\n"))
+	# print("Finish writing image content to page_info.txt")
+	# os.system("rm -rf ./png_folder")
 	pool.close()
 	pool.join()
 

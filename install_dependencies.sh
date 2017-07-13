@@ -13,4 +13,6 @@ echo "export MAGICK_HOME'=/usr/local/Cellar/imagemagick@6/6.9.8-10'" >> ~/.bash_
 echo "export PATH'=/usr/local/Cellar/imagemagick@6/6.9.8-10/bin:${PATH}'" >> ~/.bash_profile
 
 sudo pip install --upgrade google-api-python-client
+pip install git+https://github.com/jflesch/pyocr.git
+pip install tesseract-ocr
 pip install -r requirements.txt
