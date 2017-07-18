@@ -58,8 +58,8 @@ def main():
     	print("Try this "+ 10*"-" + "> python pdf_reader.py <png_file>")
     	return -1
     png_file = "./png_folder/"+command_args.png_file
-
-    image_text = pytesseract.image_to_string(Image.open(png_file))
+    img = Image.open(png_file)
+    image_text = pytesseract.image_to_string(img)
     print(image_text)
 
 
